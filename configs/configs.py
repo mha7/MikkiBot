@@ -21,9 +21,9 @@ CLIENT_USERNAME = config.get('Discord Bot Credentials', 'CLIENT_USERNAME')
 # ===================================================
 # GOOGLE'S YOUTUBE API CREDENTIALS / CONFIGS ========
 
-YOUTUBE_API_KEY = 'AIzaSyAYtxPCOm3vuyLLp8LHa6gD1W5QFbXTTg8'
-YOUTUBE_CLIENT_ID = '660526081696-ug8ibhu3mciscd9tnn4fdhp0i9b3118n.apps.googleusercontent.com'
-YOUTUBE_CLIENT_SECRET = 'MKOVqCjE0BEsZUjr3pnpFfNF'
+YOUTUBE_API_KEY = config.get('Youtube API Credentials', 'YOUTUBE_API_KEY')
+YOUTUBE_CLIENT_ID = config.get('Youtube API Credentials', 'YOUTUBE_CLIENT_ID')
+YOUTUBE_CLIENT_SECRET = config.get('Youtube API Credentials', 'YOUTUBE_CLIENT_SECRET')
 YOUTUBE_DEFAULT_SEARCH_RETURNS = config.getint('Youtube Search Config', 'YOUTUBE_DEFAULT_SEARCH_RETURNS')
 YOUTUBE_MAX_SEARCH_RETURNS = config.getint('Youtube Search Config', 'YOUTUBE_MAX_SEARCH_RETURNS')
 
