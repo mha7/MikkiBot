@@ -324,10 +324,11 @@ class Music:
 
         else:  # search the song terms
             s_list = tuple(self._search_song(song))
-            if not list:  # song search returns empty list
-                await self.bot.say("Something went wrong, please try again later.")
+            if not s_list:  # song search returns empty list
+                await self.bot.say("**No matches with the query:** " + song)
             else:
                 self.song_search[ctx.message.server] = {ctx.message.author.id: s_list}
+
                 song_str = "**Select an option using `~play n` command:**"
                 idx = 1
                 for song in s_list:
@@ -408,16 +409,6 @@ class Music:
                 await self.bot.send_message(ctx.message.channel, embed=em)
         else:
             await self.bot.say('No song currently playing.')
-
-    @commands.command(pass_context=True, no_pm=True)
-    async def duration(self, ctx):
-        state = self.get_voice_state(ctx.message.server)
-        if not state.is_playing():
-            await self.bot.say('No audio is playing...')
-        elif state.radio_playing():
-            await self.bot.say('No duration when playing the radio.')
-        else:
-            await self.bot.say(state.player.duration)
 
     @commands.command(pass_context=True, no_pm=True)
     async def volume(self, ctx, value: int):
@@ -525,7 +516,6 @@ class Music:
         else:
             await self.bot.say('Skipping song...')
             state.skip()
-            state.toggle_next()
 
     @commands.command(pass_context=True, no_pm=True)
     async def playlist(self, ctx, *, page=1):
