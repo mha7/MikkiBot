@@ -13,12 +13,15 @@ from music.audio_object.radio_object import RadioEntry
 from music.audio_object.voice_object import VoiceEntry
 from music.audio_object.voice_state import VoiceState
 from utils.youtube_search import YouTubeSearch
-
+from utils.embed_builder import EmbedBuilder
+from collections import OrderedDict
 
 class Music:
     """Voice related commands.
     Works in multiple servers at once.
     """
+
+    # ========================================= INITIALIZATION =========================================
     def __init__(self, bot):
         # Assign bot to music init
         self.bot = bot
@@ -59,6 +62,8 @@ class Music:
             except Exception:
                 pass
 
+    # ============================================ COMMANDS ============================================
+
     @commands.command(pass_context=True, no_pm=True)
     async def join(self, ctx, *, channel: discord.Channel):
         """Joins a voice channel."""
@@ -87,89 +92,6 @@ class Music:
             await self.bot.say('Ready to play audio in ' + summoned_channel.name)
 
         return True
-
-    def _search_song(self, song):
-        """ Testing search function """
-        songs = self.youtube_search.search_youtube(song)
-
-        return songs
-
-    @staticmethod
-    def _check_int(option):
-        try:
-            int(option)
-            return True
-        except ValueError:
-            return False
-
-    @staticmethod
-    def _check_url(url):
-        """" Checks if the input url is valid """
-        parsed_url = urlparse(url)
-        return bool(parsed_url.scheme)
-
-    async def manage_station(self, state, ctx, url, title):
-        """ This function is for starting / switching radio stations"""
-        try:
-            if state.radio_entry is None:  # No RadioEntry object has been created, usually when the bot starts
-                state.radio_entry = RadioEntry(ctx.message, state, radio_stream=url, title=title)
-                await state.radio_entry.create_player()
-                state.toggle_radio()
-                await self.bot.say('Now starting radio player...')
-                return
-            elif state.radio_entry.url() == url:  # Current URL stream in object is the same as new
-                await self.bot.say('Already on this radio station.')
-            else:
-                if state.radio_playing() or not state.radio_done():  #
-                    player = state.radio_entry.player
-                    player.stop()
-                await state.switch_station(url, title)
-                state.toggle_radio()
-                await self.bot.say('Switching to new station...')
-        except Exception as e:
-            fmt = 'An error occurred while processing this request: ```py\n{}: {}\n```'
-            error = fmt.format(type(e).__name__, e)
-            print(type(e).__name__, '\n', e)
-            await self.bot.send_message(ctx.message.channel, error)
-
-    @staticmethod
-    async def _get_radio_stream_from_url(url):
-        """ This function downloads the file from the url and find the stream URL from the file.
-            Returns two field: title and stream. Title is probably only from pls files if it is included. If title is
-            not included in the file, then the inputted url will be the title."""
-        if '.pls' in url:
-            try:
-                file_text = requests.get(url).text
-                pls_stream = re.search(r"File1=(.*)\n", file_text).group(1)
-                stream_title = url
-                if 'Title' in file_text:
-                    stream_title = re.search(r"Title\w+=(.*)\n", file_text).group(1)
-
-                return stream_title, pls_stream
-            except Exception as e:
-                print(type(e).__name__, '\n', e)
-                return '', ''
-        elif '.m3u8' in url:
-            return url, url
-        elif '.m3u' in url:
-            try:
-                file = requests.get(url)
-                file_text = file.text
-                text_lines = file_text.split('\n')
-                m3u_stream = -1
-                for idx, line in enumerate(text_lines):
-                    if not line.startswith('#') and not line == '\n':
-                        m3u_stream = idx
-                        break
-                if m3u_stream == -1:
-                    return '', ''
-                else:
-                    return url, text_lines[m3u_stream].strip()
-            except Exception as e:
-                print(type(e).__name__, '\n', e)
-                return '', ''
-        else:
-            return '', ''
 
     @commands.command(pass_context=True, no_pm=True, aliases=['play_radio', 'pr', 'playradio'])
     async def radio(self, ctx, *, station: str = ''):
@@ -364,11 +286,15 @@ class Music:
                 if parse:
                     video_id = parse[0]
 
+                info = dict()
+
                 # Embed message title with url link and color bar
-                em = discord.Embed(title=player.title, url=player.url, color=0xde50d0)
+
+                info['title'] = player.title
+                info['url'] = player.url
 
                 # Author / Uploader
-                em.set_author(name=player.uploader)
+                info['author'] = {'name': player.uploader}
 
                 # Duration field
                 elapsed = state.get_duration()  # current playing progress duration
@@ -388,15 +314,12 @@ class Music:
                     t_duration = "[" + str(h) + "h " + str(m) + "m " + str(s) + "s / " + \
                                  " " + str(t_h) + "h " + str(t_m) + "m " + str(t_s) + "s ]"
 
-                em.add_field(name="Duration", value=t_duration, inline=True)
-
                 # Thumbnail image
                 img_url = 'https://img.youtube.com/vi/' + video_id + '/hqdefault.jpg'
-                em.set_thumbnail(url=img_url)
+                info['thumbnail'] = img_url
 
                 # Likes
                 likes_dislikes = str(player.likes) + ":thumbsup: / " + str(player.dislikes) + ":thumbsdown:"
-                em.add_field(name="Likes / Dislikes", value=likes_dislikes, inline=True)
 
                 # Description field
                 description = player.description
@@ -404,7 +327,20 @@ class Music:
                     description = (description[:500] + '...') if len(description) > 500 else description
                 else:
                     description = "[No description available]"
-                em.add_field(name="Description", value=description, inline=False)
+
+                # Putting it all together
+                extra = OrderedDict(
+                    [
+                        ('Duration', {'value': t_duration,
+                                      'inline': True}),
+                        ('Likes / Dislikes', {'value': likes_dislikes,
+                                              'inline': True}),
+                        ('Description', {'value': description})
+                    ]
+                )
+
+                info['extra'] = extra
+                em = EmbedBuilder.build(info)
 
                 await self.bot.send_message(ctx.message.channel, embed=em)
         else:
@@ -482,11 +418,12 @@ class Music:
 
     @commands.command(pass_context=True, no_pm=True)
     async def leave(self, ctx):
-        """Leave channel
-        """
+        """Leave channel"""
+
         server = ctx.message.server
         state = self.get_voice_state(server)
 
+        # Stopping all music streams
         if state.youtube_playing():
             player = state.player
             player.stop()
@@ -496,6 +433,8 @@ class Music:
             player.stop()
 
         try:
+            # Cancel all players, remove voice_state, and disconnect from discord server
+
             state.audio_player.cancel()
             state.radio_player.cancel()
             del self.voice_states[server.id]
@@ -547,3 +486,89 @@ class Music:
 
                     playlist = playlist + '\n\nThere are **' + str(len(queue)) + '** videos in the queue.'
                     await self.bot.say(playlist)
+
+    # ======================================== COMMAND HANDLERS ========================================
+
+    def _search_song(self, song):
+        """ Testing search function """
+        songs = self.youtube_search.search_youtube(song)
+
+        return songs
+
+    @staticmethod
+    def _check_int(option):
+        try:
+            int(option)
+            return True
+        except ValueError:
+            return False
+
+    @staticmethod
+    def _check_url(url):
+        """" Checks if the input url is valid """
+        parsed_url = urlparse(url)
+        return bool(parsed_url.scheme)
+
+    async def manage_station(self, state, ctx, url, title):
+        """ This function is for starting / switching radio stations"""
+        try:
+            if state.radio_entry is None:  # No RadioEntry object has been created, usually when the bot starts
+                state.radio_entry = RadioEntry(ctx.message, state, radio_stream=url, title=title)
+                await state.radio_entry.create_player()
+                state.toggle_radio()
+                await self.bot.say('Now starting radio player...')
+                return
+            elif state.radio_entry.url() == url:  # Current URL stream in object is the same as new
+                await self.bot.say('Already on this radio station.')
+            else:
+                if state.radio_playing() or not state.radio_done():  #
+                    player = state.radio_entry.player
+                    player.stop()
+                await state.switch_station(url, title)
+                state.toggle_radio()
+                await self.bot.say('Switching to new station...')
+        except Exception as e:
+            fmt = 'An error occurred while processing this request: ```py\n{}: {}\n```'
+            error = fmt.format(type(e).__name__, e)
+            print(type(e).__name__, '\n', e)
+            await self.bot.send_message(ctx.message.channel, error)
+
+    @staticmethod
+    async def _get_radio_stream_from_url(url):
+        """ This function downloads the file from the url and find the stream URL from the file.
+            Returns two field: title and stream. Title is probably only from .pls files if it is included. If title is
+            not included in the file, then the inputted url will be the title."""
+
+        if '.pls' in url:
+            try:
+                file_text = requests.get(url).text
+                pls_stream = re.search(r"File1=(.*)\n", file_text).group(1)
+                stream_title = url
+                if 'Title' in file_text:
+                    stream_title = re.search(r"Title\w+=(.*)\n", file_text).group(1)
+
+                return stream_title, pls_stream
+            except Exception as e:
+                print(type(e).__name__, '\n', e)
+                return '', ''
+        elif '.m3u8' in url:
+            return url, url
+        elif '.m3u' in url:
+            try:
+                file = requests.get(url)
+                file_text = file.text
+                text_lines = file_text.split('\n')
+                m3u_stream = -1
+                for idx, line in enumerate(text_lines):
+                    if not line.startswith('#') and not line == '\n':
+                        m3u_stream = idx
+                        break
+                if m3u_stream == -1:
+                    return '', ''
+                else:
+                    return url, text_lines[m3u_stream].strip()
+            except Exception as e:
+                print(type(e).__name__, '\n', e)
+                return '', ''
+        else:
+            return '', ''

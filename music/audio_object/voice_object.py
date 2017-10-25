@@ -15,7 +15,7 @@ class VoiceEntry:
     async def create_player(self):
         try:
             before_args = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
-            # print(self.ytv.url)
+            # NOTE: the after function starts AFTER the stream has finish or cancelled
             player = await self.state.voice.create_ytdl_player(self.ytv.url,
                                                                ytdl_options=configs.YOUTUBE_DL_CONFIGS,
                                                                after=self.state.toggle_next,

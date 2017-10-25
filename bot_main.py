@@ -5,8 +5,9 @@ import discord
 import traceback
 from music import music
 from configs import configs
+from utils import maplestory
 from discord.ext import commands
-
+from utils.embed_builder import EmbedBuilder
 
 # Instantiate MongoDB database
 
@@ -72,8 +73,12 @@ class MikkiBot:
     @commands.command(pass_context=True, aliases=['cs_irl', 'csproblems', 'CSProblems'])
     async def cs_problems(self, ctx):
         channel = ctx.message.channel
-        em = discord.Embed(title="CS Problems", description ="", color=0xef1b1)
-        em.set_image(url='https://media.giphy.com/media/l3V0el2rHaKdAReyk/giphy.gif')
+
+        info = dict()
+        info['title'] = 'CS Problems'
+        info['image'] = 'https://media.giphy.com/media/l3V0el2rHaKdAReyk/giphy.gif'
+
+        em = EmbedBuilder.build(info)
         await self.bot.send_message(channel, embed=em)
 
     @commands.command(pass_context=True, aliases=['imagetest'])
@@ -149,6 +154,8 @@ if __name__ == '__main__':
 
     mikkibot.add_cog(MikkiBot(mikkibot))
     mikkibot.add_cog(music.Music(mikkibot))
+    mikkibot.add_cog(maplestory.Maplestory(mikkibot))
+
     @mikkibot.event
     async def on_ready():
         print('===================')

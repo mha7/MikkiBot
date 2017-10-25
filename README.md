@@ -7,6 +7,7 @@ A discord bot made for my servers
 * ffmpeg 
 * google-api-python-client 
 * youtube-dl
+* beautifulsoup4
 * pm2 (if you want to run on your cloud server)
 # Configurations
 To setup the bot, you will need to create and provide your own credentials in config/credentials.ini for the following: 

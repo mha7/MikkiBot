@@ -165,7 +165,4 @@ class VoiceState:
                 print(type(e).__name__, '\n', e)
                 await self.bot.say(error_message)
 
-            # if self.current.player.error is not None and len(self.list) > 0:
-            #     self.toggle_next()
-
             await self.play_next_song.wait()
